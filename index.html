@@ -2,22 +2,70 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мое Первое PWA</title>
+    <title>Flex Tasker</title>
     <link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; }
-        .card { background: white; padding: 2rem; border-radius: 20px; shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        :root { --bg: #ffffff; --text: #202124; --accent: #1a73e8; }
+        @media (prefers-color-scheme: dark) { :root { --bg: #202124; --text: #ffffff; } }
+        
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; padding: 20px; transition: 0.3s; }
+        .container { max-width: 400px; margin: 0 auto; }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; margin-top: 10px; cursor: pointer; width: 100%; }
+        ul { list-style: none; padding: 0; }
+        li { background: rgba(128,128,128,0.1); padding: 10px; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Привет, ChromeOS Flex!</h1>
-        <p>Это полноценное PWA приложение.</p>
+    <div class="container">
+        <h1>Flex Tasker 2026</h1>
+        <input type="text" id="taskInput" placeholder="Что нужно сделать?">
+        <button onclick="addTask()">Добавить задачу</button>
+        <ul id="taskList"></ul>
+        <button onclick="requestNotify()" style="background: #5f6368;">Включить уведомления</button>
     </div>
 
     <script>
-        // Регистрация Service Worker для работы офлайн
+        // 1. Загрузка задач из памяти при старте
+        const taskList = document.getElementById('taskList');
+        const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        savedTasks.forEach(renderTask);
+
+        function addTask() {
+            const input = document.getElementById('taskInput');
+            if (!input.value) return;
+            
+            const task = input.value;
+            renderTask(task);
+            
+            // Сохраняем в локальную базу данных
+            savedTasks.push(task);
+            localStorage.setItem('tasks', JSON.stringify(savedTasks));
+            
+            // Отправляем уведомление через 3 секунды (имитация события)
+            setTimeout(() => {
+                if (Notification.permission === 'granted') {
+                    new Notification('Задача добавлена!', { body: `Не забудьте: ${task}`, icon: 'via.placeholder.com' });
+                }
+            }, 3000);
+            
+            input.value = '';
+        }
+
+        function renderTask(text) {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${text}</span> <button onclick="this.parentElement.remove()" style="width:auto; margin:0; padding:2px 10px;">✕</button>`;
+            taskList.appendChild(li);
+        }
+
+        function requestNotify() {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') alert('Уведомления включены!');
+            });
+        }
+
+        // Регистрация Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js');
         }
