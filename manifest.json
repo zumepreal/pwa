@@ -1,19 +1,19 @@
 {
-  "name": "Flex Tasker Professional",
-  "short_name": "Tasker",
+  "name": "Flex Editor Pro",
+  "short_name": "Editor",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#202124",
-  "theme_color": "#1a73e8",
-  "icons": [
-    {"src": "via.placeholder.com", "sizes": "192x192", "type": "image/png"},
-    {"src": "via.placeholder.com", "sizes": "512x512", "type": "image/png"}
-  ],
-  "shortcuts": [
+  "background_color": "#1e1e1e",
+  "theme_color": "#007acc",
+  "file_handlers": [
     {
-      "name": "Добавить новую задачу",
-      "url": "/index.html?action=new",
-      "description": "Быстрый переход к созданию задачи"
+      "action": "/",
+      "accept": {
+        "text/plain": [".txt", ".md", ".js"]
+      }
     }
+  ],
+  "icons": [
+    {"src": "via.placeholder.com", "sizes": "192x192", "type": "image/png"}
   ]
 }

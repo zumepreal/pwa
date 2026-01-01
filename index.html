@@ -2,68 +2,67 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Flex Tasker</title>
+    <title>Flex Editor Pro</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        :root { --bg: #ffffff; --text: #202124; --accent: #1a73e8; }
-        @media (prefers-color-scheme: dark) { :root { --bg: #202124; --text: #ffffff; } }
-        
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; padding: 20px; transition: 0.3s; }
-        .container { max-width: 400px; margin: 0 auto; }
-        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; margin-top: 10px; cursor: pointer; width: 100%; }
-        ul { list-style: none; padding: 0; }
-        li { background: rgba(128,128,128,0.1); padding: 10px; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between; }
+        body { margin: 0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; background: #1e1e1e; color: #d4d4d4; }
+        .toolbar { padding: 10px; background: #2d2d2d; display: flex; gap: 10px; border-bottom: 1px solid #333; }
+        button { background: #3c3c3c; color: white; border: 1px solid #555; padding: 5px 15px; cursor: pointer; border-radius: 4px; }
+        button:hover { background: #4c4c4c; }
+        textarea { flex: 1; background: #1e1e1e; color: #d4d4d4; border: none; padding: 20px; font-size: 16px; outline: none; resize: none; }
+        .status { padding: 5px 15px; font-size: 12px; background: #007acc; color: white; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Flex Tasker 2026</h1>
-        <input type="text" id="taskInput" placeholder="Что нужно сделать?">
-        <button onclick="addTask()">Добавить задачу</button>
-        <ul id="taskList"></ul>
-        <button onclick="requestNotify()" style="background: #5f6368;">Включить уведомления</button>
+    <div class="toolbar">
+        <button id="btnOpen">Открыть файл</button>
+        <button id="btnSave">Сохранить</button>
+        <span id="fileName" style="margin-left:auto; align-self:center; opacity:0.6;">Новый файл</span>
     </div>
+    
+    <textarea id="editor" placeholder="Начните писать здесь..."></textarea>
+    
+    <div class="status" id="statusBar">Готов к работе</div>
 
     <script>
-        // 1. Загрузка задач из памяти при старте
-        const taskList = document.getElementById('taskList');
-        const savedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-        savedTasks.forEach(renderTask);
+        let fileHandle;
+        const editor = document.getElementById('editor');
+        const fileNameLabel = document.getElementById('fileName');
+        const statusBar = document.getElementById('statusBar');
 
-        function addTask() {
-            const input = document.getElementById('taskInput');
-            if (!input.value) return;
-            
-            const task = input.value;
-            renderTask(task);
-            
-            // Сохраняем в локальную базу данных
-            savedTasks.push(task);
-            localStorage.setItem('tasks', JSON.stringify(savedTasks));
-            
-            // Отправляем уведомление через 3 секунды (имитация события)
-            setTimeout(() => {
-                if (Notification.permission === 'granted') {
-                    new Notification('Задача добавлена!', { body: `Не забудьте: ${task}`, icon: 'via.placeholder.com' });
-                }
-            }, 3000);
-            
-            input.value = '';
-        }
+        // ФУНКЦИЯ: Открытие файла с диска
+        document.getElementById('btnOpen').addEventListener('click', async () => {
+            try {
+                // Вызываем системное окно выбора файла ChromeOS
+                [fileHandle] = await window.showOpenFilePicker({
+                    types: [{ description: 'Text Files', accept: {'text/plain': ['.txt', '.js', '.md']} }]
+                });
+                
+                const file = await fileHandle.getFile();
+                editor.value = await file.text();
+                fileNameLabel.textContent = file.name;
+                statusBar.textContent = 'Файл открыт успешно';
+            } catch (err) {
+                console.error('Ошибка открытия:', err);
+            }
+        });
 
-        function renderTask(text) {
-            const li = document.createElement('li');
-            li.innerHTML = `<span>${text}</span> <button onclick="this.parentElement.remove()" style="width:auto; margin:0; padding:2px 10px;">✕</button>`;
-            taskList.appendChild(li);
-        }
-
-        function requestNotify() {
-            Notification.requestPermission().then(permission => {
-                if (permission === 'granted') alert('Уведомления включены!');
-            });
-        }
+        // ФУНКЦИЯ: Сохранение файла обратно на диск
+        document.getElementById('btnSave').addEventListener('click', async () => {
+            if (!fileHandle) {
+                // Если файл новый, вызываем "Сохранить как"
+                fileHandle = await window.showSaveFilePicker();
+            }
+            
+            try {
+                const writable = await fileHandle.createWritable();
+                await writable.write(editor.value);
+                await writable.close();
+                statusBar.textContent = 'Изменения сохранены в ' + new Date().toLocaleTimeString();
+            } catch (err) {
+                statusBar.textContent = 'Ошибка сохранения: ' + err.message;
+            }
+        });
 
         // Регистрация Service Worker
         if ('serviceWorker' in navigator) {
