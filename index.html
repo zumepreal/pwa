@@ -1,73 +1,59 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Flex Editor Pro</title>
-    <link rel="manifest" href="manifest.json">
-    <style>
-        body { margin: 0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; background: #1e1e1e; color: #d4d4d4; }
-        .toolbar { padding: 10px; background: #2d2d2d; display: flex; gap: 10px; border-bottom: 1px solid #333; }
-        button { background: #3c3c3c; color: white; border: 1px solid #555; padding: 5px 15px; cursor: pointer; border-radius: 4px; }
-        button:hover { background: #4c4c4c; }
-        textarea { flex: 1; background: #1e1e1e; color: #d4d4d4; border: none; padding: 20px; font-size: 16px; outline: none; resize: none; }
-        .status { padding: 5px 15px; font-size: 12px; background: #007acc; color: white; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Monitor PWA</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
+    .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .status { font-weight: bold; color: #4285f4; }
+  </style>
 </head>
 <body>
-    <div class="toolbar">
-        <button id="btnOpen">Открыть файл</button>
-        <button id="btnSave">Сохранить</button>
-        <span id="fileName" style="margin-left:auto; align-self:center; opacity:0.6;">Новый файл</span>
-    </div>
-    
-    <textarea id="editor" placeholder="Начните писать здесь..."></textarea>
-    
-    <div class="status" id="statusBar">Готов к работе</div>
+  <h1>Монитор системы 2026</h1>
+  
+  <div class="card">
+    <p>Загрузка процессора: <span id="cpu-status" class="status">Ожидание...</span></p>
+    <p>Причина нагрузки процессора: <span id="cpu-factor" class="status">---</span></p>
+  </div>
 
-    <script>
-        let fileHandle;
-        const editor = document.getElementById('editor');
-        const fileNameLabel = document.getElementById('fileName');
-        const statusBar = document.getElementById('statusBar');
+  <div class="card">
+    <p>Батарея: <span id="battery-level" class="status">...</span></p>
+    <p>Статус батареи: <span id="battery-status" class="status">...</span></p>
+  </div>
 
-        // ФУНКЦИЯ: Открытие файла с диска
-        document.getElementById('btnOpen').addEventListener('click', async () => {
-            try {
-                // Вызываем системное окно выбора файла ChromeOS
-                [fileHandle] = await window.showOpenFilePicker({
-                    types: [{ description: 'Text Files', accept: {'text/plain': ['.txt', '.js', '.md']} }]
-                });
-                
-                const file = await fileHandle.getFile();
-                editor.value = await file.text();
-                fileNameLabel.textContent = file.name;
-                statusBar.textContent = 'Файл открыт успешно';
-            } catch (err) {
-                console.error('Ошибка открытия:', err);
-            }
-        });
+  <script>
+    // 1. Регистрация Service Worker (обязательно для PWA)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
 
-        // ФУНКЦИЯ: Сохранение файла обратно на диск
-        document.getElementById('btnSave').addEventListener('click', async () => {
-            if (!fileHandle) {
-                // Если файл новый, вызываем "Сохранить как"
-                fileHandle = await window.showSaveFilePicker();
-            }
-            
-            try {
-                const writable = await fileHandle.createWritable();
-                await writable.write(editor.value);
-                await writable.close();
-                statusBar.textContent = 'Изменения сохранены в ' + new Date().toLocaleTimeString();
-            } catch (err) {
-                statusBar.textContent = 'Ошибка сохранения: ' + err.message;
-            }
-        });
+    // 2. Мониторинг давления на процессор (Compute Pressure API)
+    if ('PressureObserver' in window) {
+      const observer = new PressureObserver((records) => {
+        const last = records[records.length - 1];
+        document.getElementById('cpu-status').innerText = last.state.toUpperCase();
+        document.getElementById('cpu-factor').innerText = last.factors.join(', ') || 'нет';
+      }, { sampleInterval: 1000 });
+      observer.observe('cpu');
+    } else {
+      document.getElementById('cpu-status').innerText = "API не поддерживается";
+    }
 
-        // Регистрация Service Worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
-        }
-    </script>
+    // 3. Мониторинг батареи
+    if ('getBattery' in navigator) {
+      navigator.getBattery().then(battery => {
+        const update = () => {
+          document.getElementById('battery-level').innerText = `${Math.round(battery.level * 100)}%`;
+          document.getElementById('battery-status').innerText = battery.charging ? "Заряжается" : "Разряжается";
+        };
+        update();
+        battery.addEventListener('levelchange', update);
+        battery.addEventListener('chargingchange', update);
+      });
+    }
+  </script>
 </body>
 </html>
